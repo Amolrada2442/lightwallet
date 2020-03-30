@@ -39,10 +39,10 @@ describe('MVS Service Provider', () => {
         it('Add asset order entry', (done) => {
             var list = ['a', 'b', 'c']
             return storage.set('asset_order', list)
-                .then(() => mvs.addAssetsToAssetOrder(['d', 'e']))
+                .then(() => mvs.addAssetToAssetOrder('d'))
                 .then(() => storage.get('asset_order'))
                 .then(result => {
-                    expect(result).toEqual(['a', 'b', 'c', 'd','e'])
+                    expect(result).toEqual(['a', 'b', 'c', 'd'])
                     done()
                 })
         });
@@ -84,7 +84,7 @@ describe('MVS Service Provider', () => {
         it('Validate address testnet', () => {
             globals.network='testnet'
             var target = [
-                'tPd41bKLJGf1C5RRvaiV2mytqZB6WfM1vR'
+                'tKXYH2MhpvA3GU7kMk8y3SoywGnyHEj5SB'
             ]
             target.forEach(address=>{
                 expect(mvs.validAddress(address)).toBe(true)

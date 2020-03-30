@@ -4,7 +4,6 @@ import { ImportWalletMobilePage } from './import-wallet-mobile';
 import { AppGlobals } from '../../app/app.global';
 import { BarcodeScanner } from '@ionic-native/barcode-scanner';
 import { TranslateModule} from '@ngx-translate/core';
-import { AlertProvider } from '../../providers/alert/alert';
 
 @NgModule({
     declarations: [
@@ -17,7 +16,6 @@ import { AlertProvider } from '../../providers/alert/alert';
     providers:[
         BarcodeScanner,
         AppGlobals,
-        AlertProvider,
     ],
     exports: [
         ImportWalletMobilePage

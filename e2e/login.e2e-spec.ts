@@ -2,11 +2,12 @@ import { Page } from './app.po';
 
 describe('Login', () => {
 
-    let page = new Page();
+    let page: Page;
 
     const DEFAULT_NETWORK = 'mainnet'
 
     beforeEach(() => {
+        page = new Page();
         page.navigateTo('/');
     });
 

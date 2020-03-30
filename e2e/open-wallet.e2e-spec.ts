@@ -2,10 +2,11 @@ import { Page } from './app.po';
 
 describe('Load Wallet', () => {
 
-    let page = new Page()
+    let page: Page;
 
     describe('Open wallet from file wallet', () => {
         beforeEach(() => {
+            page = new Page()
             page.navigateTo('/')
         })
 
@@ -52,8 +53,8 @@ describe('Load Wallet', () => {
                 .then(() => enterPassphrase('password123'))
                 .then(() => page.waitForUrlChange())
                 .then(() => {
-                    page.hasId('load_progress')
-                        .then(hasProgressbar => expect(hasProgressbar).toBe(true))
+                    page.getTitle()
+                        .then(title => expect(title).toBe('Portfolio'))
                 })
         });
 

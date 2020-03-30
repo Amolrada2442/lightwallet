@@ -3,6 +3,7 @@ page-transactions {
         display: block;
         width: 100%;
         height: auto;
+        border-radius: 50%;
     }
 
     progress-bar .progress-outer {
@@ -36,14 +37,4 @@ page-transactions {
         margin-left: 10px;
         margin-right: 10px;
     }
-
-    .ngx-pagination {
-        text-align: center;
-        
-    }
-
-    .ngx-pagination .current {
-        background-color: #488aff;
-    }
-
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { AlertController, LoadingController, Loading } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
+import 'rxjs/add/operator/map';
 
 @Injectable()
 export class AlertProvider {
@@ -31,29 +32,7 @@ export class AlertProvider {
         })
     }
 
-    showLogout(saveAccountHandler, forgetAccountHandler) {
-        this.translate.get(['RESET_TITLE', 'RESET_MESSAGE_CHOICE', 'SAVE', 'DELETE', 'BACK']).subscribe(translations => {
-            this.alertCtrl.create({
-                title: translations.RESET_TITLE,
-                message: translations.RESET_MESSAGE_CHOICE,
-                buttons: [
-                    {
-                        text: translations.SAVE,
-                        handler: saveAccountHandler
-                    },
-                    {
-                        text: translations.DELETE,
-                        handler: forgetAccountHandler
-                    },
-                    {
-                        text: translations.BACK
-                    }
-                ]
-            }).present();
-        })
-    }
-
-    showLogoutNoAccount(onLogout) {
+    showLogout(onLogout) {
         this.translate.get(['RESET_TITLE', 'RESET_MESSAGE', 'CONFIRM', 'BACK']).subscribe(translations => {
             this.alertCtrl.create({
                 title: translations.RESET_TITLE,
@@ -98,18 +77,18 @@ export class AlertProvider {
                     }
                 ]
             })
-            alert.present()
+            alert.present(prompt)
         })
     }
 
     askPassphrase(message_key, onSubmit) {
-        this.translate.get(['PASSWORD', 'OK', 'CANCEL', message_key]).subscribe((translations: any) => {
+        this.translate.get(['PASSPHRASE', 'OK', 'CANCEL', message_key]).subscribe((translations: any) => {
             let alert = this.alertCtrl.create({
-                title: translations['PASSWORD'],
+                title: translations['PASSPHRASE'],
                 subTitle: translations[message_key],
                 enableBackdropDismiss: false,
                 inputs: [
-                    { name: 'passphrase', placeholder: translations['PASSWORD'], type:'password' }
+                    { name: 'passphrase', placeholder: 'Passphrase' }
                 ],
                 buttons: [
                     {
@@ -123,56 +102,7 @@ export class AlertProvider {
                     }
                 ]
             })
-            alert.present()
-        })
-    }
-
-    askInfo(title, message, placeholder, type, onSubmit) {
-        this.translate.get(['OK', 'CANCEL', title, message, placeholder]).subscribe((translations: any) => {
-            let alert = this.alertCtrl.create({
-                title: translations[title],
-                message: translations[message],
-                enableBackdropDismiss: false,
-                inputs: [
-                    { name: 'info', placeholder: translations[placeholder], type: type }
-                ],
-                buttons: [
-                    {
-                        text: translations['CANCEL'],
-                        role: 'cancel'
-                    },
-                    {
-                        text: translations['OK'],
-                        handler: data => onSubmit(data.info)
-                    }
-                ]
-            })
-            alert.present(alert)
-        })
-    }
-
-    ask2Info(title, message, placeholder1, placeholder2, type1, type2, onSubmit) {
-        this.translate.get(['OK', 'CANCEL', title, message, placeholder1, placeholder2]).subscribe((translations: any) => {
-            let alert = this.alertCtrl.create({
-                title: translations[title],
-                message: translations[message],
-                enableBackdropDismiss: false,
-                inputs: [
-                    { name: 'info1', placeholder: translations[placeholder1], type: type1 },
-                    { name: 'info2', placeholder: translations[placeholder2], type: type2 }
-                ],
-                buttons: [
-                    {
-                        text: translations['CANCEL'],
-                        role: 'cancel'
-                    },
-                    {
-                        text: translations['OK'],
-                        handler: data => onSubmit(data)
-                    }
-                ]
-            })
-            alert.present(alert)
+            alert.present(prompt)
         })
     }
 
@@ -191,7 +121,7 @@ export class AlertProvider {
     }
 
     showErrorTranslated(subtitle, message) {
-        this.translate.get(['MESSAGE.ERROR_TITLE', subtitle, message, 'OK']).subscribe((translations: any) => {
+        this.translate.get(['MESSAGE.ERROR_TITLE', subtitle, message]).subscribe((translations: any) => {
             let alert = this.alertCtrl.create({
                 title: translations['MESSAGE.ERROR_TITLE'],
                 subTitle: translations[subtitle],
@@ -231,59 +161,16 @@ export class AlertProvider {
         })
     }
 
-    showLimitReached(title, message, limit) {
-        this.translate.get([title, message, 'OK']).subscribe((translations: any) => {
+    showTooManyRecipients(limit) {
+        this.translate.get(['MESSAGE.SEND_MORE_IMPORT_CSV_TOO_MANY_RECIPIENT_TITLE', 'MESSAGE.SEND_MORE_IMPORT_CSV_TOO_MANY_RECIPIENT_BODY', 'OK']).subscribe((translations: any) => {
             let alert = this.alertCtrl.create({
-                title: translations[title],
-                message: translations[message] + limit,
+                title: translations['MESSAGE.SEND_MORE_IMPORT_CSV_TOO_MANY_RECIPIENT_TITLE'],
+                message: translations['MESSAGE.SEND_MORE_IMPORT_CSV_TOO_MANY_RECIPIENT_BODY'] + limit,
                 buttons: [{
                     text: translations['OK']
                 }]
             });
             alert.present(alert);
-        })
-    }
-
-    showCheckbox(title, message, checkbox, checked, onSubmit) {
-        this.translate.get(['OK', title, message, checkbox]).subscribe((translations: any) => {
-            let alert = this.alertCtrl.create({
-                title: translations[title],
-                message: translations[message],
-                enableBackdropDismiss: false,
-                inputs: [
-                    { 
-                        name: 'checkbox',
-                        type: 'checkbox',
-                        label: translations[checkbox],
-                        value: 'checked',
-                        checked: checked,
-                    }
-                ],
-                buttons: [
-                    {
-                        text: translations['OK'],
-                        handler: data => onSubmit(data && data.length > 0)
-                    },
-                ]
-            })
-            alert.present(alert)
-        })
-    }
-
-    confirm(action, title, subtitle, message, confirm, back) {
-        this.translate.get([title, subtitle, message, confirm, back]).subscribe(translations => {
-            this.alertCtrl.create({
-                title: translations[title],
-                subTitle: translations[subtitle],
-                message: translations[message],
-                buttons: [
-                    { text: translations[back] },
-                    {
-                        text: translations[confirm],
-                        handler: action
-                    }
-                ]
-            }).present()
         })
     }
 

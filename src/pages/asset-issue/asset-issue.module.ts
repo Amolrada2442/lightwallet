@@ -4,8 +4,6 @@ import { AssetIssuePage } from './asset-issue';
 import { TranslateModule} from '@ngx-translate/core';
 import { AlertProvider } from '../../providers/alert/alert';
 import { PipesModule } from '../../pipes/pipes.module';
-import { AttenuationModelModule } from '../../components/attenuation-model-selector/attenuation-model-selector.module';
-import { MiningModelModule } from '../../components/mining-model-selector/mining-model-selector.module';
 
 @NgModule({
     declarations: [
@@ -14,15 +12,13 @@ import { MiningModelModule } from '../../components/mining-model-selector/mining
     imports: [
         IonicPageModule.forChild(AssetIssuePage),
         PipesModule,
-        AttenuationModelModule,
-        MiningModelModule,
-        TranslateModule,
+        TranslateModule
     ],
     providers: [
-        AlertProvider,
+        AlertProvider
     ],
     exports: [
-        AssetIssuePage,
+        AssetIssuePage
     ]
 })
 export class AssetIssuePageModule { }

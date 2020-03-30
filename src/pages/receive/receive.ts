@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { IonicPage, NavController, NavParams, Platform, ModalController } from 'ionic-angular';
+import { IonicPage, NavController, NavParams, Platform } from 'ionic-angular';
 import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
 
 @IonicPage({
@@ -13,41 +13,27 @@ import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
 export class ReceivePage {
 
     selectedAsset: any;
+    address: string;
     addressbalances: any;
     addressBalancesObject: any = {};
     addresses: Array<string>;
     displayType: string;
-    base: string
-    tickers = {}
 
     constructor(
         private navCtrl: NavController,
         private navParams: NavParams,
         private platform: Platform,
-        private mvs: MvsServiceProvider,
-        public modalCtrl: ModalController,
+        private mvs: MvsServiceProvider
     ) {
         this.addressbalances = {};
         this.selectedAsset = this.navParams.get('asset')
         this.displayType = this.selectedAsset == 'ETP' ? 'ETP' : 'asset'
-
-        this.mvs.getAddresses()
-            .then((addresses) => {
-                if (!Array.isArray(addresses) || !addresses.length)
-                    this.navCtrl.setRoot("LoginPage")
-                else
-                    this.showBalances()
-            })
-
-    }
-
-    ionViewDidEnter() {
-        this.loadTickers()
     }
 
     showBalances() {
         return this.mvs.getAddresses()
             .then((_: string[]) => {
+                this.address = _[0];
                 this.addresses = _;
                 return this.mvs.getAddressBalances()
                     .then((addressbalances) => {
@@ -66,21 +52,25 @@ export class ReceivePage {
             })
     }
 
-    private async loadTickers() {
-        [this.base, this.tickers] = await this.mvs.getBaseAndTickers()
+    ionViewDidEnter() {
+        console.log('ionViewDidEnter Receive');
+        this.mvs.getAddresses()
+            .then((addresses) => {
+                if (!Array.isArray(addresses) || !addresses.length)
+                    this.navCtrl.setRoot("LoginPage")
+                else
+                    this.showBalances()
+            })
     }
 
     canAddAddress = () => this.platform.isPlatformMatch('mobile') && !this.platform.isPlatformMatch('mobileweb')
 
     addAddress = () =>  this.navCtrl.push('generate-address-page')
 
-    history = (asset, address) =>  this.navCtrl.push('transactions-page', { asset: asset, addresses : [address] })
-
     format = (quantity, decimals) => quantity / Math.pow(10, decimals)
 
     show(address) {
-        let profileModal = this.modalCtrl.create('QRCodePage', { value: address, address: address, asset: this.selectedAsset, base: this.base, tickers: this.tickers });
-        profileModal.present();
+        this.address = address;
     }
 
 }

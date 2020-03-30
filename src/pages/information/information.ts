@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { IonicPage, NavController } from 'ionic-angular';
 import { AppGlobals } from '../../app/app.global';
-import { TranslateService } from '@ngx-translate/core';
 
 @IonicPage()
 @Component({
@@ -12,16 +11,8 @@ export class InformationPage {
 
     constructor(
         private globals: AppGlobals,
-        private translate: TranslateService,
         private navCtrl: NavController
     ) {
-    }
-
-    getLogoClasses(){
-        return{
-            banner: true,
-            china: this.translate.currentLang=='zh'
-        }
     }
 
     ionViewDidLoad() {

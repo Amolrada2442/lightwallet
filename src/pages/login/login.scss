@@ -18,14 +18,9 @@ page-login {
             margin: 10px auto;
             background:url(../assets/logo.png) no-repeat;
             width: 100%;
-            max-width: 240px;
+            max-width: 434px;
             height: 100px;
             outline: 0;
-            background-size: 100%;
-        }
-
-        .banner.china{
-            background:url(../assets/logo-zh.png) no-repeat;
             background-size: 100%;
         }
 
@@ -82,9 +77,5 @@ page-login {
             text-align: center;
 
         }
-    }
-
-    .account-btn {
-        text-transform: initial;
     }
 }

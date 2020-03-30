@@ -2,7 +2,6 @@ import { NgModule } from '@angular/core';
 import { IonicPageModule } from 'ionic-angular';
 import { ImportWalletPage } from './import-wallet';
 import { TranslateModule} from '@ngx-translate/core';
-import { AlertProvider } from '../../providers/alert/alert';
 
 @NgModule({
     declarations: [
@@ -11,9 +10,6 @@ import { AlertProvider } from '../../providers/alert/alert';
     imports: [
         IonicPageModule.forChild(ImportWalletPage),
         TranslateModule
-    ],
-    providers:[
-        AlertProvider,
     ],
     exports: [
         ImportWalletPage

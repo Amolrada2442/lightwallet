@@ -12,7 +12,7 @@ exports.config = {
     capabilities: {
         'browserName': 'chrome',
         chromeOptions: {
-            args: ['--headless', '--disable-gpu', '--window-size=800,800', '--no-sandbox']
+            args: ['--headless', '--disable-gpu', '--window-size=800,600', '--no-sandbox']
         }
     },
     directConnect: true,
@@ -21,17 +21,12 @@ exports.config = {
     jasmineNodeOpts: {
         showColors: true,
         defaultTimeoutInterval: 30000,
-        // print: function() {}
+        print: function() {}
     },
     useAllAngular2AppRoots: true,
     beforeLaunch: function() {
         require('ts-node').register({
-            project: 'e2e',
-            compilerOptions: {
-                lib: [
-                    'esnext'
-                ]
-            }
+            project: 'e2e'
         });
     },
     onPrepare: function() {

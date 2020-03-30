@@ -3,19 +3,16 @@ import { NgModule } from '@angular/core';
 // Pipes
 import { FormatPipe } from './format/format'
 import { OrderByPipe } from './order-by/order-by'
-import { DecimalsPipe } from './decimals/decimals'
 
 @NgModule({
     declarations: [
         FormatPipe,
-        OrderByPipe,
-        DecimalsPipe,
+        OrderByPipe
     ],
     imports: [ ],
     exports: [
         FormatPipe,
-        OrderByPipe,
-        DecimalsPipe,
+        OrderByPipe
     ]
 })
 export class PipesModule {}

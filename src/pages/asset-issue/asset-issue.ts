@@ -1,9 +1,8 @@
-import { Component, NgZone } from '@angular/core';
-import { IonicPage, NavController, AlertController, Loading, NavParams, Platform } from 'ionic-angular';
+import { Component } from '@angular/core';
+import { IonicPage, NavController, AlertController, LoadingController, Loading, NavParams, Platform } from 'ionic-angular';
 import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
 import { TranslateService } from '@ngx-translate/core';
 import { AlertProvider } from '../../providers/alert/alert';
-import { AppGlobals } from '../../app/app.global';
 
 @IonicPage()
 @Component({
@@ -19,11 +18,14 @@ export class AssetIssuePage {
     showBalance: number
     loading: Loading
     quantity: string
+    rawtx: string
+    passcodeSet: any
     addressbalances: Array<any>
     myaddressbalances: Array<any>
     secondaryissue: boolean
     secondaryissue_threshold: number;
     feeAddress: string
+    passphrase: string
     etpBalance: number
     symbol: string
     max_supply: string
@@ -33,8 +35,8 @@ export class AssetIssuePage {
     description: string
     issue_address: string
     certs: Array<any>;
-    list_domain_certs: Array<any> = [];     //all my domain certificates
-    list_my_domain_certs: Array<any> = [];  //domain certificates own by the avatar currently selected
+    list_domain_certs: Array<any> = [];
+    list_my_domain_certs: Array<any> = [];
     list_my_naming_certs: Array<any> = [];
     msts: Array<any>;
     list_msts: Array<any> = [];
@@ -45,27 +47,17 @@ export class AssetIssuePage {
     avatars: Array<any>;
     no_avatar: boolean = false;
     no_avatar_placeholder: string
-    bounty_fee: number
-    default_bounty_fee: number
-    total_fee: number
-    attenuation_model: string
-    blocktime: number
-    lock: boolean = false
-    mining: boolean = false
-    mst_mining_model: any
-    showAdvanced: boolean = false
+    bounty_fee: number = 80
 
     constructor(
         public navCtrl: NavController,
         private alertCtrl: AlertController,
+        private loadingCtrl: LoadingController,
         public navParams: NavParams,
         private mvs: MvsServiceProvider,
         public platform: Platform,
         private alert: AlertProvider,
-        private translate: TranslateService,
-        private zone: NgZone,
-        private globals: AppGlobals,
-    ) {
+        private translate: TranslateService) {
 
         this.selectedAsset = "ETP"
         this.feeAddress = 'auto'
@@ -74,7 +66,7 @@ export class AssetIssuePage {
         this.symbol = ''
         this.issuer_name = navParams.get('avatar_name')
         this.issue_address = navParams.get('avatar_address')
-        if (!this.issue_address) {
+        if(!this.issue_address) {
             this.translate.get('ISSUE.SELECT_AVATAR').subscribe((message: string) => {
                 this.issue_address = message
             })
@@ -83,6 +75,7 @@ export class AssetIssuePage {
             this.no_avatar_placeholder = message
         })
         this.description = ''
+        this.passphrase = ''
         this.secondaryissue = false
         this.secondaryissue_threshold = 51
 
@@ -92,7 +85,7 @@ export class AssetIssuePage {
                 this.addresses = _
             })
 
-        if (!(this.selectedAsset && this.selectedAsset.length))
+        if(!(this.selectedAsset && this.selectedAsset.length))
             this.navCtrl.setRoot('AccountPage')
 
         //Load balances
@@ -118,16 +111,6 @@ export class AssetIssuePage {
                     })
             })
 
-        this.bounty_fee = this.globals.default_fees.bountyShare
-        this.default_bounty_fee = this.bounty_fee
-        this.total_fee = globals.default_fees.mstIssue
-        this.mvs.getFees()
-            .then(fees => {
-                this.bounty_fee = fees.bountyShare
-                this.default_bounty_fee = this.bounty_fee
-                this.total_fee = fees.mstIssue
-            })
-
     }
 
     ionViewDidEnter() {
@@ -140,15 +123,21 @@ export class AssetIssuePage {
 
     ionViewDidLoad() {
         this.loadAvatars()
-            .then(() => this.loadCerts())
-            .then(() => this.loadMsts())
-            .then(() => this.symbolChanged())
+            .then(()=>this.loadCerts())
+            .then(()=>this.loadMsts())
+            .then(()=>this.symbolChanged())
             .catch(console.error);
     }
 
-    validMaxSupply = (max_supply, asset_decimals) => max_supply == 'custom' || (max_supply > 0 && ((asset_decimals == undefined) || (Math.floor(parseFloat(max_supply) * Math.pow(10, asset_decimals))) <= 10000000000000000))
+    onSendToAddressChange(event) {
 
-    validMaxSupplyCustom = (custom_max_supply, asset_decimals) => custom_max_supply > 0 && ((asset_decimals == undefined) || (Math.floor(parseFloat(custom_max_supply) * Math.pow(10, asset_decimals))) <= 10000000000000000)
+    }
+
+    //validSecondaryissueThreshold = (threshold) => (threshold>=-1&&threshold<=100)
+
+    validMaxSupply = (max_supply, asset_decimals) => max_supply == 'custom' || (max_supply > 0 && ((asset_decimals == undefined)||(Math.floor(parseFloat(max_supply) * Math.pow(10, asset_decimals))) <= 10000000000000000))
+
+    validMaxSupplyCustom = (custom_max_supply, asset_decimals) => custom_max_supply > 0 && ((asset_decimals == undefined)||(Math.floor(parseFloat(custom_max_supply) * Math.pow(10, asset_decimals))) <= 10000000000000000)
 
     validDecimals = (asset_decimals) => asset_decimals >= 0 && asset_decimals <= 8
 
@@ -160,6 +149,8 @@ export class AssetIssuePage {
 
     validDescription = (description) => (description.length > 0) && (description.length < 64)
 
+    validPassword = (passphrase) => (passphrase.length > 0)
+
     validIssueAddress = this.mvs.validAddress
 
     cancel(e) {
@@ -167,9 +158,21 @@ export class AssetIssuePage {
         this.navCtrl.pop()
     }
 
+    preview() {
+        this.create()
+            .then((tx) => {
+                this.rawtx = tx.encode().toString('hex')
+                this.loading.dismiss()
+            })
+            .catch((error)=>{
+                this.loading.dismiss()
+            })
+    }
+
     create() {
-        return this.alert.showLoading()
-            .then(() => this.mvs.createIssueAssetTx(
+        return this.showLoading()
+            .then((addresses) => this.mvs.createIssueAssetTx(
+                this.passphrase,
                 this.toUpperCase(this.symbol),
                 Math.floor(parseFloat(this.max_supply == 'custom' ? this.custom_max_supply : this.max_supply) * Math.pow(10, this.asset_decimals)),
                 this.asset_decimals,
@@ -181,17 +184,16 @@ export class AssetIssuePage {
                 undefined,
                 (this.symbol_check == "available"),
                 (this.symbol_check == "naming_owner"),
-                (this.showAdvanced) ? this.bounty_fee * this.total_fee / 100 : this.default_bounty_fee / 100 * this.total_fee,
-                (this.showAdvanced && this.lock) ? this.attenuation_model : undefined,
-                this.mining ? this.mst_mining_model : undefined
+                this.bounty_fee*100000000/100*10
             ))
             .catch((error) => {
                 console.error(error)
-                this.alert.stopLoading()
-                if (error.message == "ERR_INSUFFICIENT_BALANCE")
-                    this.alert.showError('MESSAGE.ISSUE_INSUFFICIENT_BALANCE', '')
+                if (error.message == "ERR_DECRYPT_WALLET")
+                    this.showError('MESSAGE.PASSWORD_WRONG','')
+                else if (error.message == "ERR_INSUFFICIENT_BALANCE")
+                    this.showError('MESSAGE.ISSUE_INSUFFICIENT_BALANCE','')
                 else
-                    this.alert.showError('MESSAGE.CREATE_TRANSACTION', error.message)
+                    this.showError('MESSAGE.CREATE_TRANSACTION',error.message)
                 throw Error('ERR_CREATE_TX')
             })
     }
@@ -201,47 +203,52 @@ export class AssetIssuePage {
             this.translate.get('ISSUE.CONFIRMATION_SUBTITLE').subscribe((txt_subtitle: string) => {
                 this.translate.get('REGISTER_MST').subscribe((txt_create: string) => {
                     this.translate.get('CANCEL').subscribe((txt_cancel: string) => {
-                        const alert = this.alertCtrl.create({
-                            title: txt_title,
-                            subTitle: txt_subtitle,
-                            buttons: [
-                                {
-                                    text: txt_create,
-                                    handler: data => {
-                                        // need error handling
-                                        this.send()
-                                    }
-                                },
-                                {
-                                    text: txt_cancel,
-                                    role: 'cancel'
+                    const alert = this.alertCtrl.create({
+                        title: txt_title,
+                        subTitle: txt_subtitle,
+                        buttons: [
+                            {
+                                text: txt_create,
+                                handler: data => {
+                                    // need error handling
+                                    this.send()
                                 }
-                            ]
-                        });
-                        alert.present()
+                            },
+                            {
+                                  text: txt_cancel,
+                                  role: 'cancel'
+                            }
+                        ]
                     });
-                });
-            });
-        });
+                    alert.present(prompt)
+                  });
+              });
+          });
+      });
     }
 
     send() {
         this.create()
-            .then((result) => {
-                this.navCtrl.push("confirm-tx-page", { tx: result.encode().toString('hex') })
+            .then((tx) => this.mvs.broadcast(tx.encode().toString('hex'), 1000000000))
+            .then((result: any) => {
+                this.navCtrl.pop()
+                this.translate.get('SUCCESS_SEND_TEXT').subscribe((message: string) => {
+                    this.showSent(message, result.hash)
+                })
             })
             .catch((error) => {
+                this.loading.dismiss()
                 switch (error.message) {
                     case 'ERR_CONNECTION':
                         this.alert.showError('ERROR_SEND_TEXT', '')
-                        break;
-                    case 'ERR_CREATE_TX':
-                        //already handle in create function
                         break;
                     case 'ERR_BROADCAST':
                         this.translate.get('MESSAGE.ONE_TX_PER_BLOCK').subscribe((message: string) => {
                             this.alert.showError('MESSAGE.BROADCAST_ERROR', message)
                         })
+                        break;
+                    case "ERR_DECRYPT_WALLET":
+                        this.alert.showError('MESSAGE.PASSWORD_WRONG', '')
                         break;
                     case "ERR_INSUFFICIENT_BALANCE":
                         this.alert.showError('MESSAGE.INSUFFICIENT_BALANCE', '')
@@ -254,7 +261,20 @@ export class AssetIssuePage {
 
     format = (quantity, decimals) => quantity / Math.pow(10, decimals)
 
-    round = (val: number) => Math.round(val * 100000000) / 100000000
+    round = (val:number) => Math.round(val*100000000)/100000000
+
+    showLoading() {
+        return new Promise((resolve, reject) => {
+            this.translate.get('MESSAGE.LOADING').subscribe((loading: string) => {
+                this.loading = this.loadingCtrl.create({
+                    content: loading,
+                    dismissOnPageChange: true
+                })
+                this.loading.present()
+                resolve()
+            })
+        })
+    }
 
     showSent(text, hash) {
         this.translate.get('MESSAGE.SUCCESS').subscribe((title: string) => {
@@ -264,7 +284,7 @@ export class AssetIssuePage {
                     subTitle: text + hash,
                     buttons: [ok]
                 })
-                alert.present()
+                alert.present(prompt)
             })
         })
     }
@@ -277,20 +297,34 @@ export class AssetIssuePage {
                     subTitle: text,
                     buttons: [ok]
                 })
-                alert.present()
+                alert.present(prompt)
             })
         })
     }
 
     toUpperCase(text) {
         let textUpperCase: string = ''
-        for (let i = 0; i < text.length; i++) {
+        for(let i=0;i<text.length;i++){
             textUpperCase = textUpperCase + text.charAt(i).toUpperCase()
         }
         return textUpperCase
     }
 
-    loadCerts() {
+    showError(message_key, error) {
+        this.translate.get(['MESSAGE.ERROR_TITLE', message_key, 'OK']).subscribe((translations: any) => {
+            let alert = this.alertCtrl.create({
+                title: translations['MESSAGE.ERROR_TITLE'],
+                subTitle: translations[message_key],
+                message: error,
+                buttons: [{
+                    text: translations['OK']
+                }]
+            });
+            alert.present(alert);
+        })
+    }
+
+    loadCerts(){
         return this.mvs.listCerts()
             .then((certs) => {
                 this.certs = certs;
@@ -302,29 +336,29 @@ export class AssetIssuePage {
             })
     }
 
-    checkCerts(certs) {
-        this.list_my_domain_certs = [];
-        this.list_domain_certs = [];
-        this.list_my_naming_certs = [];
-        certs.forEach(cert => {
-            if (cert.attachment.cert == 'domain') {
-                if (cert.attachment.owner == this.issuer_name) {
-                    this.list_my_domain_certs.push(cert.attachment.symbol)
-                } else {
-                    this.list_domain_certs.push(cert.attachment.symbol)
-                }
-            } else if ((cert.attachment.cert == 'naming') && (cert.attachment.owner == this.issuer_name)) {
-                this.list_my_naming_certs.push(cert.attachment.symbol)
-            }
-        })
-        this.symbolChanged()
+    checkCerts(certs){
+      this.list_my_domain_certs = [];
+      this.list_domain_certs = [];
+      this.list_my_naming_certs = [];
+      certs.forEach(cert=>{
+          if(cert.attachment.cert == 'domain') {
+              if(cert.attachment.owner == this.issuer_name) {
+                  this.list_my_domain_certs.push(cert.attachment.symbol)
+              } else {
+                  this.list_domain_certs.push(cert.attachment.symbol)
+              }
+          } else if((cert.attachment.cert == 'naming') && (cert.attachment.owner == this.issuer_name)) {
+              this.list_my_naming_certs.push(cert.attachment.symbol)
+          }
+      })
+      this.symbolChanged()
     }
 
-    loadMsts() {
+    loadMsts(){
         return this.mvs.getListMst()
             .then((msts) => {
                 this.msts = msts;
-                msts.forEach(mst => {
+                msts.forEach(mst=>{
                     this.list_msts.push(mst.symbol)
                 })
             })
@@ -334,52 +368,30 @@ export class AssetIssuePage {
             })
     }
 
-    loadAvatars() {
+    loadAvatars(){
         return this.mvs.listAvatars()
             .then((avatars) => {
                 this.avatars = avatars;
-                if (this.avatars.length === 0) {
+                if(this.avatars.length === 0) {
                     this.no_avatar = true;
                 }
             })
-    }
-
-    setAttenuationModel = (output: any) => {
-        this.attenuation_model = output.attenuation_model
-    }
-
-    setMiningModel = (model: string) => {
-        this.mst_mining_model = model
     }
 
     symbolChanged = () => {
         if (this.symbol && this.symbol.length >= 3) {
             let symbol = this.symbol.toUpperCase()
             let domain = symbol.split('.')[0]
-            if (this.list_msts && this.list_msts.indexOf(symbol) !== -1) {
+            if(this.list_msts && this.list_msts.indexOf(symbol) !== -1) {
                 this.symbol_check = "exist"
-            } else if (this.list_my_naming_certs && this.list_my_naming_certs.indexOf(symbol) !== -1) {
+            } else if(this.list_my_naming_certs && this.list_my_naming_certs.indexOf(symbol) !== -1) {
                 this.symbol_check = "naming_owner"
-            } else if (this.list_my_domain_certs && this.list_my_domain_certs.indexOf(domain) !== -1) {
+            } else if(this.list_my_domain_certs && this.list_my_domain_certs.indexOf(domain) !== -1) {
                 this.symbol_check = "domain_owner"
-            } else if (this.list_domain_certs && this.list_domain_certs.indexOf(domain) !== -1) {
-                this.symbol_check = "other_avatar_domain_owner"
+            } else if(this.list_my_domain_certs && this.list_domain_certs.indexOf(domain) !== -1) {
+                this.symbol_check = "not_domain_owner"
             } else {
-                this.mvs.getCert(domain, 'domain')
-                    .then(response => {
-                        if (domain != this.symbol.split('.')[0].toUpperCase())
-                            return
-                        if (!response || !response.result) {
-                            this.symbol_check = "cant_check_domain"
-                        } else if (response.result.length > 0) {
-                            this.symbol_check = "not_domain_owner"
-                        } else {
-                            this.symbol_check = "available"
-                        }
-                    })
-                    .catch((e) => {
-                        this.symbol_check = "cant_check_domain"
-                    })
+                this.symbol_check = "available"
             }
         } else {
             this.symbol_check = "too_short"
@@ -387,9 +399,8 @@ export class AssetIssuePage {
     }
 
     maxSupplyChanged = () => {
-        this.updateRange()
         let max_supply = this.max_supply != 'custom' ? this.max_supply : this.custom_max_supply
-        if (this.asset_decimals != undefined && (Math.floor(parseFloat(max_supply) * Math.pow(10, this.asset_decimals))) > 10000000000000000) {
+        if(this.asset_decimals != undefined && (Math.floor(parseFloat(max_supply) * Math.pow(10, this.asset_decimals))) > 10000000000000000) {
             this.error_too_high_max_supply = true
         } else {
             this.error_too_high_max_supply = false
@@ -400,15 +411,11 @@ export class AssetIssuePage {
     issuerChanged = () => {
         this.checkCerts(this.certs)
         this.avatars.forEach((avatar) => {
-            if (avatar.symbol == this.issuer_name) {
+            if(avatar.symbol == this.issuer_name) {
                 this.issue_address = avatar.address
                 return
             }
         })
-    }
-
-    updateRange() {
-        this.zone.run(() => { });
     }
 
 }

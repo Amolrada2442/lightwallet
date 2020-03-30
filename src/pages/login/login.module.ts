@@ -11,8 +11,10 @@ import { TranslateModule} from '@ngx-translate/core';
         IonicPageModule.forChild(LoginPage),
         TranslateModule
     ],
-    exports: [
-        LoginPage,
+    entryComponents: [
     ],
+    exports: [
+        LoginPage
+    ]
 })
 export class LoginPageModule { }

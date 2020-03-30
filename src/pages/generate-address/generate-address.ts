@@ -43,23 +43,28 @@ export class GenerateAddressPage {
                 let addresses = this.wallet.generateAddresses(wallet, 0, this.index )
                 return this.mvs.setAddresses(addresses)
             })
+            .then(() => this.mvs.dataReset())
+            .then(() => Promise.all([this.mvs.updateHeight(), this.updateBalances()]))
+            .then(() => this.updateBalances())
             .then(() => this.wallet.setAddressIndex(this.index))
-            .then(() => this.wallet.saveSessionAccount(this.passphrase))
-            .then(() => this.alert.stopLoading())
-            .then(() => this.navCtrl.setRoot("LoadingPage", { reset: true }))
+            .then(()=>this.alert.stopLoading())
+            .then(() => this.navCtrl.pop())
             .catch(error=>{
                 console.error(error)
                 this.alert.stopLoading()
-                switch(error.message){
-                    case "ERR_DECRYPT_WALLET":
-                        this.alert.showError('MESSAGE.PASSWORD_WRONG', '')
-                        break;
-                    default:
-                        this.alert.showError('GENERATE_ADDRESSES.ERROR', error.message)
-                        break;
-                }
+                this.alert.showError('GENERATE_ADDRESSES.ERROR', error.message)
             })
 
+    }
+
+    private updateBalances = () => {
+        return this.mvs.getData()
+            .then(() => this.mvs.setUpdateTime())
+            .then(() => this.mvs.getBalances())
+            .then((_) => {
+                return Promise.all(Object.keys(_.MST).map((symbol) => this.mvs.addAssetToAssetOrder(symbol)))
+            })
+            .catch((error) => console.error("Can't update balances: " + error))
     }
 
     validIndex = (index: number) => index >= 1 && index <= 50
