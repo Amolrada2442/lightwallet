@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { AppGlobals } from '../../app/app.global';
-import { IonicPage, NavController, NavParams } from 'ionic-angular';
+import { IonicPage, NavController, NavParams, Select } from 'ionic-angular';
 import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
+import { WalletServiceProvider } from '../../providers/wallet-service/wallet-service';
 
 @IonicPage({
     name: 'transactions-page',
@@ -9,134 +10,210 @@ import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
 })
 @Component({
     selector: 'page-transactions',
-    templateUrl: 'transactions.html',
+    templateUrl: 'transactions.html'
 })
 
 export class TransactionsPage {
 
-    asset: any
-    txs: any[]
+    asset: string
+    txs: any[] = []
     loading: boolean
 
     display_segment: string = "transactions"
-    height: number;
+    height: number
 
-    frozen_outputs_locked: any[] = [];
-    frozen_outputs_unlocked: any[] = [];
+    frozen_outputs_locked: any[] = []
+    frozen_outputs_unlocked: any[] = []
     order_by: string = 'locked_until'
     direction: number = 0
     blocktime: number
     current_time: number
+    icon: string = 'default_mst'
+    page_tx: number = 1
+    page_deposit_unlocked: number = 1
+    items_per_page: number = 25
+    txs_history: any[]
+    transactionMap: Promise<any>
+    assets: Array<string> = []
+
+    addresses: Array<string> = this.navParams.get('addresses')
+    allAddresses: Array<string> = []
+    iconsList: Array<string> = []
+    selected: boolean = true
+    allSelected: boolean = true
+
+    @ViewChild('selectAddresses') selectAddresses: Select;
 
     constructor(
         public navCtrl: NavController,
         private globals: AppGlobals,
         public navParams: NavParams,
-        private mvs: MvsServiceProvider
+        private mvs: MvsServiceProvider,
+        private wallet: WalletServiceProvider,
     ) {
         this.asset = navParams.get('asset');
-        this.showTxs({ symbol: this.asset });
+        this.icon = navParams.get('icon');
         this.loading = true;
         this.current_time = Date.now()
-
+        this.transactionMap = this.mvs.getTransactionMap()
+        this.mvs.assetOrder().then(result => this.assets = ['ETP'].concat(result))
     }
 
-    ionViewDidEnter() {
-        console.log('Transactions page loaded')
-        this.mvs.getHeight()
-            .then(height=>{
-                this.height=height
-            })
-            .then(() => this.mvs.getFrozenOutputs())
-            .then(outputs=>{
-                this.frozen_outputs_locked = []
-                this.frozen_outputs_unlocked = []
-                let grouped_frozen_ouputs = {}
-                outputs.forEach((output) => {
-                    grouped_frozen_ouputs[output.height] = grouped_frozen_ouputs[output.height] ? grouped_frozen_ouputs[output.height] : {}
-                    if(grouped_frozen_ouputs[output.height][output.locked_until]) {
-                        grouped_frozen_ouputs[output.height][output.locked_until].value += output.value
-                        grouped_frozen_ouputs[output.height][output.locked_until].transactions.push(output.hash)
-                    } else {
-                        output.transactions = [output.hash]
-                        grouped_frozen_ouputs[output.height][output.locked_until] = output
-                    }
-                })
-                for (var height in grouped_frozen_ouputs) {
-                    var unlock = grouped_frozen_ouputs[height];
-                    for (var output in unlock) {
-                        if(this.height>parseInt(output))
-                            this.frozen_outputs_unlocked.push(unlock[output])
-                        else
-                            this.frozen_outputs_locked.push(unlock[output])
-                    }
-                }
-            })
-            .then(() => this.mvs.getBlocktime(this.height))
-            .then(blocktime => this.blocktime = blocktime)
+    async ionViewDidEnter() {
+        this.height = await this.mvs.getHeight()
+        this.calculateFrozenOutputs()
+        this.blocktime = await this.mvs.getBlocktime(this.height)
 
-        this.mvs.getAddresses()
-            .then((addresses) => {
-                if (!Array.isArray(addresses) || !addresses.length)
-                    this.navCtrl.setRoot("LoginPage")
-            })
+        const addresses = await this.mvs.getAddresses()
+        const multisigAddresses = await this.wallet.getMultisigAddresses()
+        this.allAddresses = addresses.concat(multisigAddresses)
+
+        this.showTxs({ symbol: this.asset });
+        this.iconsList = await this.wallet.getIcons().MST
     }
 
-    depositProgress(start_height, locked_until){
-        return Math.max(1, Math.min(99, Math.round((this.height-start_height)/(locked_until-start_height)*100)))
+    depositProgress(start, end) {
+        return Math.max(1, Math.min(99, Math.round((this.height - start) / (end - start) * 100)))
     }
 
-    private showTxs(filter) {
-        return this.mvs.getAddresses()
-            .then((addresses: string[]) => {
-                return this.mvs.getTxs()
-                    .then((txs: any[]) => this.filterTxs(txs, filter.symbol, addresses))
-            })
-            .then((txs: any) => {
-                this.txs = txs
-                this.loading = false;
-            })
+    private async showTxs(filter) {
+        this.addresses = this.addresses ? this.addresses : this.allAddresses
+        this.txs_history = await this.mvs.getTxs()
+        this.txs = await this.filterTxs(this.txs_history, filter.symbol, this.addresses)
+        this.loading = false
     }
 
-    explorerURL = (tx) => (this.globals.network == 'mainnet') ? 'https://explorer.mvs.org/#!/tx/' + tx : 'https://explorer-testnet.mvs.org/#!/tx/' + tx;
+    explorerURL = (tx) => (this.globals.network == 'mainnet') ? 'https://explorer.mvs.org/tx/' + tx : 'https://explorer-testnet.mvs.org/tx/' + tx
 
-    private filterTxs(txs: any[], symbol, addresses) {
-        return Promise.all(txs.filter((tx) => this.filterTx(tx, symbol, addresses)))
+    async filterTxs(txs: any[], symbol, addresses) {
+        let filteredTxs = []
+        for (let i = 0; i < txs.length; i++) {
+            let tx = await this.filterTx(txs[i], symbol, addresses, filteredTxs.length < this.items_per_page)
+            if (tx) {
+                filteredTxs.push(tx)
+            }
+        }
+        return filteredTxs
     }
 
+    async updateFilters(symbol, addresses) {
+        this.icon = this.iconsList.indexOf(this.asset) !== -1 ? this.asset : 'default_mst'
+        this.txs = await this.filterTxs(this.txs_history, symbol, addresses)
+    }
 
-    private filterTx(tx: any, asset: string, addresses: Array<string>) {
-        let result = false;
-        tx.inputs.forEach((input) => {
-            if (this.isMineTXIO(input, addresses)) {
+    async filterTx(tx: any, asset: string, addresses: Array<string>, loadInputs: boolean = true) {
+        let result = false
+        let include_mst = false
+        if (tx.inputs) {
+            for (let i = 0; i < tx.inputs.length; i++) {
+                let input = tx.inputs[i]
                 if (!tx.unconfirmed) {
-                    if (['asset-transfer', 'asset-issue'].indexOf(input.attachment.type) !== -1 && input.attachment.symbol == asset)
-                        result = true;
-                    else if (asset == 'ETP' && input.value)
-                        result = true;
+                    if (['asset-transfer', 'asset-issue'].indexOf(input.attachment.type) !== -1) {
+                        include_mst = true
+                        result = false
+                        if (input.attachment.symbol == asset && this.isMineTXIO(input, addresses)) {
+                            result = true
+                            break
+                        }
+                    } else if (asset == 'ETP' && input.value && !include_mst && this.isMineTXIO(input, addresses)) {
+                        result = true
+                        break
+                    } else if (asset == 'ETP' && input.previous_output.hash == '0000000000000000000000000000000000000000000000000000000000000000' && this.isMineTXIO(input, addresses)) {
+                        result = true
+                        break
+                    }
                 }
+            };
+        }
+        if (result) {
+            if (loadInputs) {
+                tx = await this.mvs.organizeInputs(JSON.parse(JSON.stringify(tx)), false, await this.transactionMap)
+                tx.inputsLoaded = true
             }
-        });
-        if (result) return tx;
-        tx.outputs.forEach((output) => {
-            if (this.isMineTXIO(output, addresses)) {
-                if (['asset-transfer', 'asset-issue'].indexOf(output.attachment.type) !== -1 && output.attachment.symbol == asset)
-                    result = true;
-                else if (asset == 'ETP' && output.value)
-                    result = true;
+            return tx
+        }
+        if (tx.outputs) {
+            for (let i = 0; i < tx.outputs.length; i++) {
+                let output = tx.outputs[i]
+                if (['asset-transfer', 'asset-issue'].indexOf(output.attachment.type) !== -1) {
+                    include_mst = true
+                    result = false
+                    if (output.attachment.symbol == asset && this.isMineTXIO(output, addresses)) {
+                        result = true
+                        break
+                    }
+                } else if (asset == 'ETP' && output.value && !include_mst && this.isMineTXIO(output, addresses)) {
+                    result = true
+                    break
+                }
+            };
+        }
+        if (result) {
+            if (loadInputs) {
+                tx = await this.mvs.organizeInputs(JSON.parse(JSON.stringify(tx)), false, await this.transactionMap)
+                tx.inputsLoaded = true
             }
-        });
-        if (result) return tx;
+            return tx
+        }
     }
 
-    public formatQuantity(quantity, decimals) {
-        return quantity / Math.pow(10, decimals)
+    private isMineTXIO = (txio, addresses) => (addresses && addresses.indexOf(txio.address) !== -1)
+
+    async calculateFrozenOutputs() {
+        let outputs = await this.mvs.getFrozenOutputs(this.asset)
+        this.frozen_outputs_locked = []
+        this.frozen_outputs_unlocked = []
+        let grouped_frozen_ouputs = {}
+        outputs.forEach((output) => {
+            grouped_frozen_ouputs[output.height] = grouped_frozen_ouputs[output.height] ? grouped_frozen_ouputs[output.height] : {}
+            if (grouped_frozen_ouputs[output.height][output.locked_until]) {
+                if (this.asset == 'ETP') {
+                    grouped_frozen_ouputs[output.height][output.locked_until].value += output.value
+                } else {
+                    grouped_frozen_ouputs[output.height][output.locked_until].attachment.quantity += output.attachment.quantity
+                }
+                grouped_frozen_ouputs[output.height][output.locked_until].transactions.push(output.hash)
+            } else {
+                output.transactions = [output.hash]
+                grouped_frozen_ouputs[output.height][output.locked_until] = output
+            }
+        })
+        for (var height in grouped_frozen_ouputs) {
+            var unlock = grouped_frozen_ouputs[height];
+            for (var output in unlock) {
+                if (this.height > parseInt(output))
+                    this.frozen_outputs_unlocked.push(unlock[output])
+                else
+                    this.frozen_outputs_locked.push(unlock[output])
+            }
+        }
     }
 
-    private isMineTXIO = (txio, addresses) => (addresses.indexOf(txio.address) !== -1)
-
-    format(quantity, decimals) {
-        return quantity / Math.pow(10, decimals);
+    async pageChange(page_number) {
+        this.loading = true
+        this.page_tx = page_number
+        for (let i = this.items_per_page * (page_number - 1); i < this.txs.length; i++) {
+            if (this.txs[i] && !this.txs[i].inputsLoaded) {
+                this.txs[i] = await this.mvs.organizeInputs(JSON.parse(JSON.stringify(this.txs[i])), false, await this.transactionMap)
+                this.txs[i].inputsLoaded = true
+            }
+        }
+        this.loading = false
     }
+
+    selectAll() {
+        this.allSelected = true
+        this.addresses = this.allAddresses
+        this.selectAddresses.close().then(() => this.selectAddresses.open())
+    }
+
+    selectNone() {
+        this.allSelected = false
+        this.addresses = []
+        this.txs = []
+        this.selectAddresses.close().then(() => this.selectAddresses.open())
+    }
+
+    errorImg = e => this.icon = this.icon !== 'assets/icon/' + this.asset + '.png' ? 'assets/icon/' + this.asset + '.png' : 'assets/icon/default_mst.png'
 
 }

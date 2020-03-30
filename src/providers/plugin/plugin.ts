@@ -15,6 +15,10 @@ export class Plugin {
     repository: string
 }
 
+export class PluginsConfig {
+    hideSettingsWarning: boolean = false
+}
+
 @Injectable()
 export class PluginProvider {
 
@@ -43,21 +47,23 @@ export class PluginProvider {
 
     fetchPlugin(url) {
         return new Promise(resolve => {
-            return this.http.get(url).subscribe(plugin => {
-                try {
-                    resolve(plugin.json())
-                } catch(e) {
-                    resolve(null)
-                }
-            });
+            return this.http.get(url)
+                .map(res => res.json())
+                .subscribe(
+                    data => resolve(data),
+                    err => resolve(null)
+                );
         })
         .then((plugin: Plugin) => {
-            if (plugin == null)
+            if (plugin == null) {
                 throw Error("ERR_INVALID_URL")
-            if (!/^[a-z-]*$/.test(plugin.name))
+            } else if (!plugin.name || !plugin.config || !plugin.url) {
+                throw Error("ERR_INVALID_PLUGIN_FORMAT")
+            } else if (!/^[a-z-]*$/.test(plugin.name)) {
                 throw Error("ERR_INVALID_PLUGIN_NAME")
-            if (plugin.translation == undefined || plugin.translation.default == undefined || plugin.translation.default.name == undefined)
+            } else if (plugin.translation == undefined || plugin.translation.default == undefined || plugin.translation.default.name == undefined) {
                 throw Error("ERR_MISSING_DEFAULT_TRANSLATION")
+            }
             return plugin
         })
     }
@@ -71,6 +77,15 @@ export class PluginProvider {
                 plugins.push(plugin)
                 return this.storage.set('plugins', plugins)
             })
+    }
+
+    getPluginsConfig(): Promise<PluginsConfig> {
+        return this.storage.get('plugins_config')
+            .then(config => (config) ? config : {})
+    }
+
+    setPluginsConfig(config: PluginsConfig) {
+        return this.storage.set('plugins_config', config)
     }
 
 }

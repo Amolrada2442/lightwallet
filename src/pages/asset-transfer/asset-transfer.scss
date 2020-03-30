@@ -22,7 +22,6 @@ page-asset-transfer {
     .right-buttons {
         float: right;
         height: 34px;
-        margin-top: 20px;
     }
 
     .list-md .item-input:last-child {
@@ -52,11 +51,10 @@ page-asset-transfer {
     .remove-button {
         float: right;
         margin: 0;
-
     }
 
     .card-block .col {
-       padding: 0;
+        padding: 0;
     }
 
     .inputfile {
@@ -71,7 +69,7 @@ page-asset-transfer {
     .inputfile + label {
         font-weight: 500;
         color: white;
-        background-color: #32db64;
+        background-color: color($colors, secondary);
         margin: auto;
         margin-right: 0px;
         padding-left: 15px;
@@ -96,7 +94,16 @@ page-asset-transfer {
 
     .inputfile + label {
         cursor: pointer; /* "hand" cursor */
+    }
 
+    .available {
+        padding-left: 10px;
+    }
+
+    .fiat {
+        color: grey;
+        height: 28px;
+        min-height: 28px;
     }
 
 }

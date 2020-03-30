@@ -12,9 +12,14 @@ page-information {
         margin: 10px auto;
         background:url(../assets/logo.png) no-repeat;
         width: 100%;
-        max-width: 434px;
+        max-width: 240px;
         height: 100px;
         outline: 0;
+        background-size: 100%;
+    }
+
+    .banner.china{
+        background:url(../assets/logo-zh.png) no-repeat;
         background-size: 100%;
     }
 }

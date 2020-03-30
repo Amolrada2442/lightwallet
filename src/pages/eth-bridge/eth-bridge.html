@@ -1,13 +1,17 @@
 <ion-header>
     <ion-navbar>
         <button ion-button menuToggle>
-      <ion-icon name="menu"></ion-icon>
-    </button>
+            <ion-icon name="menu"></ion-icon>
+        </button>
         <ion-title>{{ "ETH_BRIDGE" | translate}}</ion-title>
     </ion-navbar>
 </ion-header>
 
 <ion-content padding style="padding-bottom: 0;">
+    <div class="rightbtc-logo">
+        <img [src]="'assets/images/rightbtc-logo.png'">
+        <p>{{"TOKEN_DROPLET.POWERED_BY" | translate}}</p>
+    </div>
     <ion-item no-lines>
         <ion-segment [(ngModel)]="direction" color="primary">
             <ion-segment-button value="ethtomvs">
@@ -30,13 +34,15 @@
         <ion-list>
             <ion-item [ngClass]="{'error-border': !validIdentifier(identifier)}">
                 <ion-label>{{"ETH_TO_MVS.SELECT_AVATAR_OR_ADDRESS"|translate}}</ion-label>
-                <ion-select [(ngModel)]="identifier" name="identifier" multiple="false" okText="{{'OK'|translate}}" cancelText="{{'CANCEL'|translate}}" (ngModelChange)="registerEthBridge(identifier)">
-                    <ion-option *ngFor="let addressbalance of addressbalances" value="{{addressbalance.identifier}}">{{addressbalance.identifier}} - {{addressbalance.balance | format : 8}} ETP</ion-option>
+                <ion-select [(ngModel)]="identifier" name="identifier" multiple="false" okText="{{'OK'|translate}}"
+                    cancelText="{{'CANCEL'|translate}}" (ngModelChange)="registerEthBridge(identifier)">
+                    <ion-option *ngFor="let addressbalance of addressbalances" value="{{addressbalance.identifier}}">{{addressbalance.identifier}}
+                        - {{addressbalance.balance | format : 8}} ETP</ion-option>
                 </ion-select>
             </ion-item>
             <ion-card-content *ngIf="data">
                 <h4>{{"ETH_TO_MVS.DATA"|translate}}:</h4>
-                <textarea fz-elastic ion-input full type="text" #copyData value="{{data}}" style="" readonly>{{data}}</textarea>
+                <textarea fz-elastic ion-input full type="text" #copyData value="{{data}}" readonly>{{data}}</textarea>
                 <button col-sm-12 col-md-6 col-lg-3 ion-button full item-right icon-left [ngxClipboard]="copyData">
                     <ion-icon name="copy"></ion-icon>
                     {{'COPY'|translate}}

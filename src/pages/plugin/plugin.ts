@@ -54,7 +54,7 @@ export class PluginPage {
             case 'verify':
                 return Promise.resolve(this.walletProvider.verifyMessage(data.params.text, data.params.address, data.params.signature))
             case 'unlock':
-                return this.unlock()
+                return this.unlock('MESSAGE.UNLOCK_WALLET_PASSWORD_MESSAGE')
             case 'addresses':
                 return this.mvs.getAddresses()
             case 'broadcast':
@@ -161,18 +161,33 @@ export class PluginPage {
             .then(address => {
                 return this.askPassphrase(`Plugin wants to create new MIT ${params.symbol}. It will be issued for by your Avatar ${params.avatar}`)
                     .then((passphrase: string) => {
-                        return this.mvs.createRegisterMITTx(passphrase, address, params.avatar, params.symbol, params.content, undefined, undefined).then(tx => (params.raw) ? tx.encode().toString('hex') : tx)
+                        return this.mvs.createRegisterMITTx(address, params.avatar, params.symbol, params.content, undefined, undefined)
+                            .then(rawtx => this.mvs.sign(rawtx, passphrase))   
+                            .then(tx => (params.raw) ? tx.encode().toString('hex') : tx)
                     })
             })
     }
 
-    unlock() {
-        return this.askPassphrase('Enter passphrase to unlock wallet')
+    unlock(text) {
+        return this.askPassphrase(text)
             .then(passphrase => this.walletProvider.getWallet(passphrase))
             .then(wallet => {
                 this.wallet = wallet;
                 return true;
-            });
+            })
+            .catch((error) => {
+                console.error(error.message)
+                switch(error.message){
+                    case "ERR_DECRYPT_WALLET":
+                        return this.unlock('MESSAGE.WRONG_PASSWORD_TRY_AGAIN')
+                    case "ERR_USER_CONFIRMATION_FAILED":
+                        this.alert.showError('MESSAGE.UNLOCK_WALLET_PASSWORD_NOT_ENTERED', '')
+                        throw Error('ERR_USER_CONFIRMATION_FAILED')
+                    default:
+                        this.alert.showError('MESSAGE.UNLOCK_WALLET', error.message)
+                        throw Error('ERR_UNLOCK_WALLET')
+                }
+            })
     }
 
     askPassphrase(text) {

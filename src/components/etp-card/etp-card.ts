@@ -10,14 +10,13 @@ export class EtpCardComponent {
     @Input() balance: any;
     @Input() tickers: any;
     @Input() base: string;
+    @Input() icon: string;
 
     constructor(
         private nav: NavController
     ) { }
 
-    gotoDeposit = () => this.nav.push("DepositPage", { asset: 'ETP' })
-
-    gotoTransactions = () => this.nav.push("transactions-page", { asset: 'ETP' })
+    gotoTransactions = () => this.nav.push("transactions-page", { asset: 'ETP', icon: 'icon' })
 
     gotoTransfer = () => this.nav.push("transfer-page", { asset: 'ETP' })
 

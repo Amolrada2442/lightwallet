@@ -7,6 +7,8 @@ import { Keyboard } from '@ionic-native/keyboard'
 import { AppGlobals } from './app.global'
 import { Storage } from '@ionic/storage'
 import { PluginProvider } from '../providers/plugin/plugin'
+import { MvsServiceProvider } from '../providers/mvs-service/mvs-service';
+import { Deeplinks } from '@ionic-native/deeplinks';
 
 @Component({
     templateUrl: 'app.html'
@@ -24,27 +26,45 @@ export class MyETPWallet {
         private plugins: PluginProvider,
         public translate: TranslateService,
         private event: Events,
+        private mvs: MvsServiceProvider,
         private globals: AppGlobals,
         public statusBar: StatusBar,
-        public keyboard: Keyboard
+        public keyboard: Keyboard,
+        private deeplinks: Deeplinks,
     ) {
 
-        this.initializeApp()
-            .then(() => this.storage.get('network'))
+        const networkQueryParam = this.getQueryParameter('network')
+
+        this.getNetwork(networkQueryParam)
             .then((network) => this.initNetwork(network))
+            .then(() => this.initializeApp())
             .then(() => this.storage.get('language'))
             .then((language) => this.initLanguage(language))
             .then(() => this.isLoggedIn())
-            .then((loggedin) => {
+            .then(async (loggedin) => {
                 if (loggedin) {
-                    this.rootPage = "AccountPage"
+                    return this.mvs.getUpdateNeeded(this.globals.show_loading_screen_after_unused_time)
+                        .then(needUpdate => this.rootPage = needUpdate ? "LoadingPage" : "AccountPage")
                 } else {
                     this.rootPage = "LoginPage"
                 }
-                return;
             })
             .then(() => this.keyboard.hideKeyboardAccessoryBar(false))
             .then(() => this.splashScreen.hide())
+            .then(() => {
+                if (this.rootPage !== 'LoadingPage') {
+                    return this.deeplinks.routeWithNavController(this.nav, {
+                        '/send/:asset': 'transfer-page',
+                        '/#/send/:asset': 'transfer-page',
+                    }).subscribe((match) => {
+                        console.log('Successfully matched route', match);
+                    },
+                        (nomatch) => {
+                            // nomatch.$link - the full link data
+                            console.error('Got a deeplink that didn\'t match', nomatch);
+                        })
+                }
+            })
             .catch((e) => console.error(e));
 
         this.setTheme();
@@ -67,6 +87,19 @@ export class MyETPWallet {
         return this.storage.get('mvs_addresses')
             .then((addresses) => (addresses != undefined && addresses != null && Array.isArray(addresses) && addresses.length))
 
+    }
+
+    async getNetwork(networkQueryParam) {
+        const loginStatus = await this.isLoggedIn()
+        if (loginStatus) return this.storage.get('network')
+        switch (networkQueryParam) {
+            case 'testnet':
+            case 'mainnet':
+                console.info('set network to ' + networkQueryParam)
+                await this.storage.set('network', networkQueryParam)
+                return networkQueryParam
+        }
+        return this.storage.get('network')
     }
 
     setMenu = () => {
@@ -103,10 +136,9 @@ export class MyETPWallet {
     setPublicMenu() {
         return Promise.all([
             { title: 'LOGIN', component: "LoginPage", icon: 'log-in', root: true },
-            { title: 'LANGUAGE_SETTINGS', component: "LanguageSwitcherPage", icon: 'flag' },
-            { title: 'THEME_SETTINGS', component: "ThemeSwitcherPage", icon: 'color-palette' },
+            { title: 'NEWS', component: "NewsPage", icon: 'paper' },
             { title: 'REPORT_BUG', newtab: 'https://github.com/mvs-org/lightwallet/issues', icon: 'bug' },
-            { title: 'INFORMATION', component: "InformationPage", icon: 'information-circle' }
+            { title: 'INFORMATION.TITLE', component: "InformationPage", icon: 'information-circle' }
         ].map((entry) => this.addToMenu(entry)))
     }
 
@@ -116,7 +148,7 @@ export class MyETPWallet {
                 let p = []
                 plugins.forEach(plugin => {
                     p.push({
-                        title: (plugin.translation[this.translate.currentLang])?plugin.translation[this.translate.currentLang].name:plugin.translation.default.name, component: "PluginPage", params: { name: plugin.name }, icon: 'cube'
+                        title: (plugin.translation[this.translate.currentLang]) ? plugin.translation[this.translate.currentLang].name : plugin.translation.default.name, component: "PluginStartPage", params: { name: plugin.name }, icon: 'cube', beta: true
                     })
                 })
                 return p
@@ -124,16 +156,15 @@ export class MyETPWallet {
             .then(plugins => {
                 return Promise.all([
                     { title: 'ACCOUNT.TITLE', component: "AccountPage", icon: 'home', root: true },
-                    { title: 'ETP_DEPOSIT', component: "DepositPage", icon: 'log-in' },
                     { title: 'AVATARS', component: "AvatarsPage", icon: 'person' },
+                    { title: 'AUTHENTICATION.TITLE', component: "AuthPage", icon: 'bitident', beta: true },
                     { title: 'REGISTER_MST', component: "AssetIssuePage", icon: 'globe' },
                     { title: 'REGISTER_MIT', component: "MITRegisterPage", icon: 'create' },
-                    { title: 'ETH_BRIDGE', component: "EthBridgePage", icon: 'swap' },
-                    { title: 'LANGUAGE_SETTINGS', component: "LanguageSwitcherPage", icon: 'flag' },
-                    { title: 'THEME_SETTINGS', component: "ThemeSwitcherPage", icon: 'color-palette' },
-                    { title: 'SETTINGS', component: "SettingsPage", icon: 'settings' },
-                    { title: 'REPORT_BUG', component: "ReportPage", icon: 'bug' },
-                    { title: 'INFORMATION.TITLE', component: "InformationPage", icon: 'information-circle' }
+                    { title: 'APPS', component: "AppsPage", icon: 'appstore', beta: true },
+                    { title: 'NEWS', component: "NewsPage", icon: 'paper' },
+                    { title: 'ADVANCED', component: "AdvancedPage", icon: 'settings' },
+                    { title: 'SETTINGS', component: "SettingsPage", icon: 'options' },
+                    { title: 'REPORT_BUG', component: "ReportPage", icon: 'bug' }
                 ].concat(plugins).map((entry) => this.addToMenu(entry)))
             });
     }
@@ -179,5 +210,14 @@ export class MyETPWallet {
                 window.open(page.newtab, '_blank');
 
 
+    }
+
+    getQueryParameter(name) {
+        name = name.replace(/[\[\]]/g, '\\$&');
+        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+            results = regex.exec(window.location.href);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 }

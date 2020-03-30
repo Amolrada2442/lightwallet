@@ -16,7 +16,11 @@
 // automatically applied to the <body> element in the app.
 
 .alert-md .alert-wrapper, .alert-ios .alert-wrapper {
-    max-width: none;
+    max-width: 600px;
+}
+
+.alert-message {
+    overflow-y: inherit;
 }
 
 .scroll-content {
@@ -25,21 +29,35 @@
     padding-top: 21px !important;
 }
 
-.item.error-border .item-inner{
+.item.error-border .item-inner, .item.item-select .error-border .item-cover {
     border-bottom-color: red !important;
     -webkit-box-shadow: inset 0 -1px 0 0 red !important;
     box-shadow: red !important;
 }
 
-.wrong-input{
+.item.warning-border .item-inner, .item.item-select .warning-border .item-cover {
+    border-bottom-color: orange !important;
+    -webkit-box-shadow: inset 0 -1px 0 0 orange !important;
+    box-shadow: orange !important;
+}
+
+.wrong-input {
     color: red;
 }
 
-.warning{
+.warning-input {
     color: orange;
 }
 
-.item.item-select:not(.error-border):not(.no-color-border) .item-inner .ng-valid .item-cover{
+.beta-tag {
+    color: red;
+    font-size: 0.8em;
+    top: 10px;
+    position: absolute;
+    padding-left: 5px;
+}
+
+.item.item-select:not(.error-border):not(.warning-border):not(.no-color-border) .item-inner .ng-valid .item-cover{
     border-bottom-color: #32db64 !important;
     -webkit-box-shadow: inset 0 -1px 0 0 #32db64 !important;
     box-shadow: inset 0 -1px 0 0 #32db64 !important;
@@ -57,6 +75,12 @@
     color: #32db64;
 }
 
+.item.item-input.default-border .item-inner{
+    border-bottom-color: #488aff !important;
+    -webkit-box-shadow: inset 0 -1px 0 0 #488aff !important;
+    box-shadow: inset 0 -1px 0 0 #488aff !important;
+}
+
 .advice {
     font-size: 1.2rem;
     color: rgb(148, 148, 148);
@@ -64,7 +88,7 @@
     margin-top: 10px;
 }
 
-.alert-sub-title{
+.alert-sub-title, .alert-message{
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
@@ -85,7 +109,7 @@
     user-select: text;
 }
 
-.valid-input ion-label, .wrong-input ion-label, .info-input ion-label{
+.valid-input, .wrong-input, .info-input, .warning-input, .toggle-input, .valid-input ion-label, .wrong-input ion-label, .info-input ion-label, .warning-input ion-label, .toggle-input ion-label {
     text-overflow: initial;
     white-space: initial;
 }
@@ -93,6 +117,11 @@
 .small-label{
     min-height: 22px;
     height: 22px;
+}
+
+.display-overflow {
+    text-overflow: initial;
+    white-space: initial;
 }
 
 .overflow {
@@ -108,6 +137,18 @@
 .info-input ion-label {
     margin-top: 10px;
     margin-bottom: 0;
+}
+
+.alert-input {
+    color: inherit !important;
+}
+
+.textareaCard {
+    padding: 0 10px;
+    border-radius: 2px;
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 
@@ -150,6 +191,58 @@
     left: 3.5em;
 }
 
+ion-modal ion-backdrop {
+    visibility: visible;
+}
+
+.md .modal-wrapper {
+    left: calc(50% - (250px/2));
+    top: 10%;
+    height: 80%;
+    position: absolute;
+    width: 250px;
+    box-shadow: 0 28px 48px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+@media (min-width: 400px) {
+    .md .modal-wrapper {
+        left: calc(50% - (300px/2));
+        width: 300px;
+    }
+}
+
+@media (min-width: 600px) {
+    .md .modal-wrapper {
+        left: calc(50% - (400px/2));
+        width: 400px;
+    }
+}
+
+ion-alert:not(.alert-ios) .alert-button-group-vertical {
+    height: 70px;
+    text-align: center;
+}
+
+.alert-button .button-inner, .alert-md .alert-button .button-inner {
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+}
+
+.menu-icon {
+    height: 20px;
+    width: 20px;
+    margin-right: 4px;
+    -webkit-filter: grayscale(100%); /* Safari 6.0 - 9.0 */
+    filter: grayscale(100%);
+}
+
+.default-color {
+    color: black;
+}
+
 
 // ███▄    █  ▒█████   ▄████▄  ▄▄▄█████▓ ██▓ ██▓     █    ██ ▒██   ██▒
 // ██ ▀█   █ ▒██▒  ██▒▒██▀ ▀█  ▓  ██▒ ▓▒▓██▒▓██▒     ██  ▓██▒▒▒ █ █ ▒░
@@ -162,10 +255,10 @@
 // ░     ░ ░  ░ ░                ░      ░  ░   ░      ░    ░
 
 .theme-noctilux{
-  .wrong-input div{
-      color: red !important;
-  }
-  background-color: #383838;
+    .wrong-input div{
+        color: red !important;
+    }
+    background-color: #383838;
     .content{
         background-color: #202020;
     }
@@ -190,12 +283,12 @@
     }
 
     page-login .banner {
-        margin: 20px auto !important;
         background:url(../assets/logo1.png) no-repeat !important;
-        width: 100% !important;
-        max-width: 334px !important;
-        height: 80px !important;
-        outline: 0 !important;
+        background-size: 100% !important;
+    }
+
+    page-login .banner.china {
+        background:url(../assets/logo1-zh.png) no-repeat !important;
         background-size: 100% !important;
     }
 
@@ -207,7 +300,7 @@
         filter: blur(5px);
     }
 
-    p,div {
+    p,div,.count-down,.count-down .digital {
         color: #949494;
     }
 
@@ -225,14 +318,14 @@
         }
     }
 
-    .alert-md [aria-checked=false]{
-        .alert-radio-label{
-          color: #949494;
+    .alert-md {
+        .alert-radio-label, .alert-checkbox-label {
+            color: #949494;
         }
     }
 
     textarea {
-        background-color: #383838
+        background-color: transparent;
     }
 
     ion-card {
@@ -240,6 +333,14 @@
         .item-md,h1,h2, h3, h4, p {
             background-color: #383838;
         }
+    }
+
+    .pic-description1, .pic-description2, .pic-description3 {
+        filter: invert(70%);
+    }
+
+    .default-color {
+        color: #949494;
     }
 }
 
@@ -307,7 +408,7 @@
     }
 
     textarea {
-        background-color: #383838
+        background-color: transparent;
     }
 
     ion-card {
@@ -315,6 +416,10 @@
         .item-md,h1,h2, h3, h4, p {
             background-color: #383838;
         }
+    }
+
+    .default-color {
+        color: #ff1493;
     }
 }
 
@@ -363,7 +468,7 @@
         filter: blur(5px);
     }
 
-    p,div {
+    p,div,.count-down,.count-down .digital {
         color: #0f8082;
     }
 
@@ -382,24 +487,24 @@
     }
 
     .alert-md [aria-checked=false]{
-        .alert-radio-label{
-          color: #0f8082;
+        .alert-radio-label, .alert-radio-label {
+            color: #0f8082;
         }
     }
 
 
     page-login .banner {
-        margin: 20px auto !important;
         background:url(../assets/logo1.png) no-repeat !important;
-        width: 100% !important;
-        max-width: 334px !important;
-        height: 80px !important;
-        outline: 0 !important;
+        background-size: 100% !important;
+    }
+
+    page-login .banner.china {
+        background:url(../assets/logo1-zh.png) no-repeat !important;
         background-size: 100% !important;
     }
 
     textarea {
-        background-color: #002b36;
+        background-color: transparent;
         color: #fff;
     }
 
@@ -408,6 +513,14 @@
         .item-md,h1,h2, h3, h4, p {
             background-color: #002b36;
         }
+    }
+
+    .pic-description1, .pic-description2, .pic-description3 {
+        filter: invert(70%);
+    }
+
+    .default-color {
+        color: #0f8082;
     }
 }
 
@@ -453,6 +566,10 @@
             background-color: pink;
         }
     }
+
+    .default-color {
+        color: white;
+    }
 }
 
 
@@ -463,9 +580,6 @@
 
 .center {
     text-align: center;
-}
-.platform-ios.platform-cordova:not(.fullscreen) {
-    // margin-top: 20px;
 }
 
 ion-list-header{
@@ -527,12 +641,12 @@ ion-list-header{
 .ios ion-tabs > .ion-page.tab-subpage > ion-header > .toolbar.statusbar-padding:first-child,
 .ios ion-menu > .menu-inner > .toolbar.statusbar-padding:first-child,
 .ios ion-menu > .menu-inner > ion-header > .toolbar.statusbar-padding:first-child {
-  padding-top: calc(20px + 4px);
-  padding-top: calc(constant(safe-area-inset-top) + 4px);
-  padding-top: calc(env(safe-area-inset-top) + 4px);
-  min-height: calc(44px + 20px);
-  min-height: calc(44px + constant(safe-area-inset-top));
-  min-height: calc(44px + env(safe-area-inset-top));
+    padding-top: calc(20px + 4px);
+    padding-top: calc(constant(safe-area-inset-top) + 4px);
+    padding-top: calc(env(safe-area-inset-top) + 4px);
+    min-height: calc(44px + 20px);
+    min-height: calc(44px + constant(safe-area-inset-top));
+    min-height: calc(44px + env(safe-area-inset-top));
 }
 
 .ios ion-nav > .ion-page > ion-content.statusbar-padding:first-child .scroll-content,
@@ -542,9 +656,9 @@ ion-list-header{
 .ios ion-tabs > .ion-page.tab-subpage > ion-header > ion-content.statusbar-padding:first-child .scroll-content,
 .ios ion-menu > .menu-inner > ion-content.statusbar-padding:first-child .scroll-content,
 .ios ion-menu > .menu-inner > ion-header > ion-content.statusbar-padding:first-child .scroll-content {
-  padding-top: 20px;
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
+    padding-top: 20px;
+    padding-top: constant(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top);
 }
 
 .ios ion-nav > .ion-page > ion-content.statusbar-padding:first-child[padding] .scroll-content,
@@ -561,9 +675,9 @@ ion-list-header{
 .ios ion-menu > .menu-inner > ion-content.statusbar-padding:first-child[padding-top] .scroll-content,
 .ios ion-menu > .menu-inner > ion-header > ion-content.statusbar-padding:first-child[padding] .scroll-content,
 .ios ion-menu > .menu-inner > ion-header > ion-content.statusbar-padding:first-child[padding-top] .scroll-content {
-  padding-top: calc(16px + 20px);
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
+    padding-top: calc(16px + 20px);
+    padding-top: constant(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top);
 }
 
 .ios ion-nav > .ion-page > .toolbar.statusbar-padding:first-child ion-segment,
@@ -580,39 +694,6 @@ ion-list-header{
 .ios ion-menu > .menu-inner > .toolbar.statusbar-padding:first-child ion-title,
 .ios ion-menu > .menu-inner > ion-header > .toolbar.statusbar-padding:first-child ion-segment,
 .ios ion-menu > .menu-inner > ion-header > .toolbar.statusbar-padding:first-child ion-title {
-  padding-top: 20px;
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
-  height: calc(44px + 20px);
-  height: calc(44px + constant(safe-area-inset-top));
-  height: calc(44px + env(safe-area-inset-top));
-  min-height: calc(44px + 20px);
-  min-height: calc(44px + constant(safe-area-inset-top));
-  min-height: calc(44px + env(safe-area-inset-top));
-}
-
-@media only screen and (max-width: 767px) {
-  .ios .modal-wrapper > .ion-page > ion-header > .toolbar.statusbar-padding:first-child {
-    padding-top: calc(20px + 4px);
-    padding-top: calc(constant(safe-area-inset-top) + 4px);
-    padding-top: calc(env(safe-area-inset-top) + 4px);
-    min-height: calc(44px + 20px);
-    min-height: calc(44px + constant(safe-area-inset-top));
-    min-height: calc(44px + env(safe-area-inset-top));
-  }
-  .ios .modal-wrapper > .ion-page > ion-header > ion-content.statusbar-padding:first-child .scroll-content {
-    padding-top: 20px;
-    padding-top: constant(safe-area-inset-top);
-    padding-top: env(safe-area-inset-top);
-  }
-  .ios .modal-wrapper > .ion-page > ion-header > ion-content.statusbar-padding:first-child[padding] .scroll-content,
-  .ios .modal-wrapper > .ion-page > ion-header > ion-content.statusbar-padding:first-child[padding-top] .scroll-content {
-    padding-top: calc(16px + 20px);
-    padding-top: constant(safe-area-inset-top);
-    padding-top: env(safe-area-inset-top);
-  }
-  .ios .modal-wrapper > .ion-page > ion-header > .toolbar.statusbar-padding:first-child ion-segment,
-  .ios .modal-wrapper > .ion-page > ion-header > .toolbar.statusbar-padding:first-child ion-title {
     padding-top: 20px;
     padding-top: constant(safe-area-inset-top);
     padding-top: env(safe-area-inset-top);
@@ -622,7 +703,40 @@ ion-list-header{
     min-height: calc(44px + 20px);
     min-height: calc(44px + constant(safe-area-inset-top));
     min-height: calc(44px + env(safe-area-inset-top));
-  }
+}
+
+@media only screen and (max-width: 767px) {
+    .ios .modal-wrapper > .ion-page > ion-header > .toolbar.statusbar-padding:first-child {
+        padding-top: calc(20px + 4px);
+        padding-top: calc(constant(safe-area-inset-top) + 4px);
+        padding-top: calc(env(safe-area-inset-top) + 4px);
+        min-height: calc(44px + 20px);
+        min-height: calc(44px + constant(safe-area-inset-top));
+        min-height: calc(44px + env(safe-area-inset-top));
+    }
+    .ios .modal-wrapper > .ion-page > ion-header > ion-content.statusbar-padding:first-child .scroll-content {
+        padding-top: 20px;
+        padding-top: constant(safe-area-inset-top);
+        padding-top: env(safe-area-inset-top);
+    }
+    .ios .modal-wrapper > .ion-page > ion-header > ion-content.statusbar-padding:first-child[padding] .scroll-content,
+    .ios .modal-wrapper > .ion-page > ion-header > ion-content.statusbar-padding:first-child[padding-top] .scroll-content {
+        padding-top: calc(16px + 20px);
+        padding-top: constant(safe-area-inset-top);
+        padding-top: env(safe-area-inset-top);
+    }
+    .ios .modal-wrapper > .ion-page > ion-header > .toolbar.statusbar-padding:first-child ion-segment,
+    .ios .modal-wrapper > .ion-page > ion-header > .toolbar.statusbar-padding:first-child ion-title {
+        padding-top: 20px;
+        padding-top: constant(safe-area-inset-top);
+        padding-top: env(safe-area-inset-top);
+        height: calc(44px + 20px);
+        height: calc(44px + constant(safe-area-inset-top));
+        height: calc(44px + env(safe-area-inset-top));
+        min-height: calc(44px + 20px);
+        min-height: calc(44px + constant(safe-area-inset-top));
+        min-height: calc(44px + env(safe-area-inset-top));
+    }
 }
 
 /*Footer iOS*/

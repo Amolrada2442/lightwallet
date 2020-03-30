@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, NgZone } from '@angular/core';
 import { IonicPage, NavController, Platform, AlertController } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
 import { AlertProvider } from '../../providers/alert/alert';
 import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
+import { AppGlobals } from '../../app/app.global';
 
 class AddressBalance {
     constructor(
@@ -19,11 +20,14 @@ export class CreateAvatarPage {
 
     symbol: string = ""
     avatar_address: string = ""
-    passphrase: string = ""
     addressbalances: Array<AddressBalance> = []
-    list_all_avatars: Array<string> = [];
-    bounty_fee: number = 80
+    bounty_fee: number
+    default_bounty_fee: number
+    total_fee: number
     addressSelectOptions: any
+    message: string = ""
+    available_symbol: boolean = false
+    showAdvanced: boolean = false
 
     constructor(
         public navCtrl: NavController,
@@ -31,23 +35,29 @@ export class CreateAvatarPage {
         private translate: TranslateService,
         public platform: Platform,
         private alertCtrl: AlertController,
-        private mvs: MvsServiceProvider) {
+        private mvs: MvsServiceProvider,
+        private zone: NgZone,
+        private globals: AppGlobals,
+    ) {
 
-        this.mvs.listAvatars()
-            .then(avatars => this.mvs.getAddressBalances()
-                .then(addressbalances => {
-                    if (Object.keys(addressbalances).length) {
-                        Object.keys(addressbalances).forEach((address) => {
-                            if (addressbalances[address].ETP && addressbalances[address].ETP.available >= 100000000) {
-                                this.addressbalances.push(new AddressBalance(address, addressbalances[address].ETP.available))
-                                avatars.forEach((avatar) => {
-                                    if (avatar.address == address)
-                                        this.addressbalances.pop();
-                                })
-                            }
-                        })
+        Promise.all([this.mvs.getAddresses(), this.mvs.getAddressBalances()])
+            .then(([addresses, addressbalances]) => {
+                addresses.forEach((address) => {
+                    if (addressbalances[address] && addressbalances[address].ETP && addressbalances[address].ETP.available >= 100000000 && addressbalances[address].AVATAR === '') {
+                        this.addressbalances.push(new AddressBalance(address, addressbalances[address].ETP.available))
                     }
-                }))
+                })
+            })
+
+        this.bounty_fee = this.globals.default_fees.bountyShare
+        this.default_bounty_fee = this.bounty_fee
+        this.total_fee = this.globals.default_fees.avatar
+        this.mvs.getFees()
+            .then(fees => {
+                this.bounty_fee = fees.bountyShare
+                this.default_bounty_fee = this.bounty_fee
+                this.total_fee = fees.avatar
+            })
     }
 
     ionViewDidLoad() {
@@ -56,8 +66,6 @@ export class CreateAvatarPage {
                 subTitle: message
             };
         })
-        this.loadListAvatars()
-            .catch(console.error);
     }
 
     cancel() {
@@ -66,13 +74,18 @@ export class CreateAvatarPage {
 
     create() {
         return this.alert.showLoading()
-            .then(() => this.mvs.createAvatarTx(this.passphrase, this.avatar_address, this.symbol, undefined, this.bounty_fee*100000000/100))
-            .then(tx => this.mvs.send(tx))
-            .then((result) => {
-                this.navCtrl.pop()
-                this.navCtrl.pop()
-                this.navCtrl.push('AvatarsPage')
-                this.alert.showSent('SUCCESS_SEND_TEXT', result.hash)
+            .then(() => {
+                let messages = [];
+                if (this.message) {
+                    messages.push(this.message)
+                }
+                return this.mvs.createAvatarTx(
+                    this.avatar_address,
+                    this.symbol,
+                    undefined,
+                    (this.showAdvanced) ? this.bounty_fee * this.total_fee / 100 : this.default_bounty_fee * this.total_fee / 100,
+                    messages
+                )
             })
             .catch((error) => {
                 console.error(error)
@@ -99,51 +112,69 @@ export class CreateAvatarPage {
             })
     }
 
+    send() {
+        this.create()
+            .then((result) => {
+                this.navCtrl.push("confirm-tx-page", { tx: result.encode().toString('hex') })
+                this.alert.stopLoading()
+            })
+    }
+
     confirm() {
         this.translate.get('CREATE_AVATAR.CONFIRMATION_TITLE').subscribe((txt_title: string) => {
             this.translate.get('CREATE_AVATAR.CONFIRMATION_SUBTITLE').subscribe((txt_subtitle: string) => {
                 this.translate.get('CREATE_AVATAR.CREATE_BTN').subscribe((txt_create: string) => {
                     this.translate.get('CANCEL').subscribe((txt_cancel: string) => {
-                    const alert = this.alertCtrl.create({
-                        title: txt_title,
-                        subTitle: txt_subtitle,
-                        buttons: [
-                            {
-                                text: txt_create,
-                                handler: data => {
-                                    // need error handling
-                                    this.create()
+                        const alert = this.alertCtrl.create({
+                            title: txt_title,
+                            subTitle: txt_subtitle,
+                            buttons: [
+                                {
+                                    text: txt_create,
+                                    handler: data => {
+                                        // need error handling
+                                        this.send()
+                                    }
+                                },
+                                {
+                                    text: txt_cancel,
+                                    role: 'cancel'
                                 }
-                            },
-                            {
-                                  text: txt_cancel,
-                                  role: 'cancel'
-                            }
-                        ]
+                            ]
+                        });
+                        alert.present()
                     });
-                    alert.present(prompt)
-                  });
-              });
-          });
-      });
+                });
+            });
+        });
     }
-
-    loadListAvatars(){
-        return this.mvs.getListAvatar()
-            .then((avatars) => {
-                avatars.result.forEach((avatar) => {
-                    this.list_all_avatars.push(avatar.symbol)
-                })
-            })
-            .catch((error) => {
-                console.error(error)
-            })
-    }
-
-    validPassword = (passphrase) => (passphrase.length > 0)
 
     validAddress = (avatar_address) => (avatar_address != '')
 
-    validSymbol = (symbol) => (symbol.length > 2) && (symbol.length < 64) && (!/[^A-Za-z0-9@_.-]/g.test(symbol)) && (this.list_all_avatars.indexOf(symbol) == -1)
+    validSymbol = (symbol) => (symbol.length > 2) && (symbol.length < 64) && (!/[^A-Za-z0-9@_.-]/g.test(symbol)) && this.available_symbol
+
+    validMessageLength = (message) => this.mvs.verifyMessageSize(message) < 253
+
+    symbolChanged = (symbol) => {
+        symbol = symbol.trim()
+        this.symbol = symbol
+        if (symbol && symbol.length >= 3) {
+            this.mvs.getAvatarAvailable(symbol)
+                .then(available => {
+                    if (this.symbol != symbol) {
+                        return
+                    } else {
+                        this.available_symbol = available
+                    }
+                })
+                .catch((e) => {
+                    this.available_symbol = false
+                })
+        }
+    }
+
+    updateRange() {
+        this.zone.run(() => { });
+    }
 
 }

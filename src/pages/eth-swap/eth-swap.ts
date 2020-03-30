@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, NgZone } from '@angular/core';
 import { IonicPage, NavController, NavParams, Platform } from 'ionic-angular';
 import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
 import { AlertProvider } from '../../providers/alert/alert';
@@ -22,17 +22,16 @@ export class EthSwapPage {
     recipient_address: string = ""
     recipient_avatar: string
     quantity: string = ""
-    rawtx: string
     addressbalances: Array<any>
     sendFrom: string = "auto"
     changeAddress: string
-    passphrase: string = ""
     etpBalance: number
     @ViewChild('quantityInput') quantityInput;
     message: string = ''
     fee: number = 10000
     eth_address: string
     swap_fee: number = 100000000
+    showAdvanced: boolean = false
 
     constructor(
         public navCtrl: NavController,
@@ -40,7 +39,8 @@ export class EthSwapPage {
         private mvs: MvsServiceProvider,
         public platform: Platform,
         private alert: AlertProvider,
-        private globals: AppGlobals
+        private globals: AppGlobals,
+        private zone: NgZone,
     ) {
 
         this.selectedAsset = navParams.get('asset')
@@ -122,17 +122,6 @@ export class EthSwapPage {
         this.navCtrl.pop()
     }
 
-    preview() {
-        this.create()
-            .then((tx) => {
-                this.rawtx = tx.encode().toString('hex')
-                this.alert.stopLoading()
-            })
-            .catch((error) => {
-                this.alert.stopLoading()
-            })
-    }
-
     create() {
         return this.alert.showLoading()
             .then(() => this.mvs.getAddresses())
@@ -145,20 +134,20 @@ export class EthSwapPage {
                 let eth_message = '{\"type\":\"ETH\",\"address\":\"' + this.eth_address + '\"}';
                 messages.push(eth_message)
                 return this.mvs.createSendSwapTx(
-                    this.passphrase,
                     this.selectedAsset,
                     this.recipient_address,
                     this.recipient_avatar,
                     Math.round(parseFloat(this.quantity) * Math.pow(10, this.decimals)),
                     (this.sendFrom != 'auto') ? this.sendFrom : null,
-                    (this.changeAddress != 'auto') ? this.changeAddress : undefined,
-                    this.fee,
-                    messages,
-                    this.swap_fee
+                    (this.showAdvanced && this.changeAddress != 'auto') ? this.changeAddress : undefined,
+                    (this.showAdvanced) ? this.fee : 10000,
+                    (this.showAdvanced && messages !== []) ? messages : undefined,
+                    (this.showAdvanced) ? this.swap_fee : 100000000
                 )
             })
             .catch((error) => {
                 console.error(error.message)
+                this.alert.stopLoading()
                 switch(error.message){
                     case "ERR_DECRYPT_WALLET":
                         this.alert.showError('MESSAGE.PASSWORD_WRONG', '')
@@ -178,11 +167,9 @@ export class EthSwapPage {
 
     send() {
         this.create()
-            .then(tx => this.mvs.send(tx))
             .then((result) => {
-                this.navCtrl.pop()
+                this.navCtrl.push("confirm-tx-page", { tx: result.encode().toString('hex') })
                 this.alert.stopLoading()
-                this.alert.showSent('SUCCESS_SEND_TEXT', result.hash)
             })
             .catch((error) => {
                 console.error(error)
@@ -209,10 +196,12 @@ export class EthSwapPage {
         this.quantityInput.setFocus()
     })
 
-    validPassword = (passphrase) => (passphrase.length > 0)
-
     validMessageLength = (message) => this.mvs.verifyMessageSize(message) < 253
 
     validEthereumAddress = (address) => (address != undefined && address != '' && address.charAt(0) == '0' && address.charAt(1) == 'x' && address.trim().length == 42)
+
+    updateRange() {
+        this.zone.run(() => { });
+    }
 
 }

@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
-import { IonicPage, NavController, NavParams, AlertController, Platform, Loading } from 'ionic-angular';
+import { Component, NgZone } from '@angular/core';
+import { IonicPage, NavController, NavParams, Platform, Loading } from 'ionic-angular';
 import { TranslateService } from '@ngx-translate/core';
 import { AlertProvider } from '../../providers/alert/alert';
 import { MvsServiceProvider } from '../../providers/mvs-service/mvs-service';
+import { AppGlobals } from '../../app/app.global';
 
 @IonicPage()
 @Component({
@@ -13,7 +14,6 @@ export class MITRegisterPage {
 
 
     symbol: string = ""
-    passphrase: string = ""
     recipient_address: string = ""
     recipient_avatar: string = ""
     content: string = ""
@@ -22,17 +22,21 @@ export class MITRegisterPage {
     avatars: Array<any>;
     no_avatar: boolean = false;
     no_avatar_placeholder: string
-    list_all_mits: Array<string> = [];
-    fee: number = 10000
+    defaultFee: number
+    fee: number
+    symbol_available: boolean = false
+    showAdvanced: boolean = false
 
     constructor(
         public navCtrl: NavController,
-        private alertCtrl: AlertController,
         private alert: AlertProvider,
         public platform: Platform,
         public navParams: NavParams,
         private translate: TranslateService,
-        private mvs: MvsServiceProvider) {
+        private mvs: MvsServiceProvider,
+        private zone: NgZone,
+        private globals: AppGlobals,
+    ) {
 
         this.recipient_avatar = this.navParams.get('avatar_name')
         this.recipient_address = this.navParams.get('avatar_address')
@@ -66,20 +70,22 @@ export class MITRegisterPage {
                 }
                 this.addressbalances = addrblncs
             })
-    }
 
-    ionViewDidLoad() {
-        this.loadMits()
-            .catch(console.error);
+        this.fee = this.globals.default_fees.mitIssue
+        this.defaultFee = this.fee
+        this.mvs.getFees()
+            .then(fees => {
+                this.fee = fees.mitIssue
+                this.defaultFee = this.fee
+            })
+
     }
 
     cancel() {
         this.navCtrl.pop();
     }
 
-    validPassword = (passphrase) => (passphrase.length > 0)
-
-    validSymbol = (symbol) => /^[A-Za-z0-9._\-]{3,64}$/g.test(symbol) && this.list_all_mits.indexOf(symbol) == -1
+    validSymbol = (symbol) => /^[A-Za-z0-9._\-]{3,64}$/g.test(symbol) && this.symbol_available
 
     validContent = (content) => content == undefined || content.length<253
 
@@ -90,24 +96,16 @@ export class MITRegisterPage {
     create() {
         return this.alert.showLoading()
             .then(() => this.mvs.createRegisterMITTx(
-                this.passphrase,
                 this.recipient_address,
                 this.recipient_avatar,
                 this.symbol,
                 this.content,
                 undefined,
-                this.fee)
+                (this.showAdvanced) ? this.fee : this.defaultFee)
             )
-            .then(tx => this.mvs.send(tx))
-            .then((result) => {
-                this.navCtrl.pop()
-                this.translate.get('SUCCESS_SEND_TEXT').subscribe((message: string) => {
-                    this.showSent(message, result.hash)
-                })
-            })
             .catch((error) => {
                 console.error(error)
-                this.loading.dismiss()
+                this.alert.stopLoading()
                 switch (error.message) {
                     case 'ERR_CONNECTION':
                         this.alert.showError('ERROR_SEND_TEXT', '')
@@ -116,9 +114,6 @@ export class MITRegisterPage {
                         this.translate.get('MESSAGE.ONE_TX_PER_BLOCK').subscribe((message: string) => {
                             this.alert.showError('MESSAGE.BROADCAST_ERROR', message)
                         })
-                        break;
-                    case "ERR_DECRYPT_WALLET":
-                        this.alert.showError('MESSAGE.PASSWORD_WRONG', '')
                         break;
                     case "ERR_INSUFFICIENT_BALANCE":
                         this.alert.showError('MESSAGE.INSUFFICIENT_BALANCE', '')
@@ -129,55 +124,11 @@ export class MITRegisterPage {
             })
     }
 
-    showSent(text, hash) {
-        this.translate.get('MESSAGE.SUCCESS').subscribe((title: string) => {
-            this.translate.get('OK').subscribe((ok: string) => {
-                let alert = this.alertCtrl.create({
-                    title: title,
-                    subTitle: text + hash,
-                    buttons: [ok]
-                })
-                alert.present(prompt)
-            })
-        })
-    }
-
-    showAlert(text) {
-        this.translate.get('MESSAGE.ERROR_TITLE').subscribe((title: string) => {
-            this.translate.get('OK').subscribe((ok: string) => {
-                let alert = this.alertCtrl.create({
-                    title: title,
-                    subTitle: text,
-                    buttons: [ok]
-                })
-                alert.present(prompt)
-            })
-        })
-    }
-
-    showError(message_key, error) {
-        this.translate.get(['MESSAGE.ERROR_TITLE', message_key, 'OK']).subscribe((translations: any) => {
-            let alert = this.alertCtrl.create({
-                title: translations['MESSAGE.ERROR_TITLE'],
-                subTitle: translations[message_key],
-                message: error,
-                buttons: [{
-                    text: translations['OK']
-                }]
-            });
-            alert.present(alert);
-        })
-    }
-
-    loadMits(){
-        return this.mvs.getListMit()
-            .then((mits) => {
-                mits.result.forEach((mit) => {
-                    this.list_all_mits.push(mit.attachment.symbol)
-                })
-            })
-            .catch((error) => {
-                console.error(error)
+    send() {
+        this.create()
+            .then((result) => {
+                this.navCtrl.push("confirm-tx-page", { tx: result.encode().toString('hex') })
+                this.alert.stopLoading()
             })
     }
 
@@ -189,4 +140,28 @@ export class MITRegisterPage {
             }
         })
     }
+
+    symbolChanged = () => {
+        if (this.symbol && this.symbol.length >= 3) {
+            this.symbol = this.symbol.trim()
+            Promise.all([this.mvs.suggestMIT(this.symbol), this.symbol])
+                .then(result => {
+                    if (this.symbol != result[1]) {
+                        throw ''
+                    } else if (result[0][0] === this.symbol) {
+                        this.symbol_available = false
+                    } else {
+                        this.symbol_available = true
+                    }
+                })
+                .catch((e) => {
+                    this.symbol_available = false
+                })
+        }
+    }
+
+    updateRange() {
+        this.zone.run(() => { });
+    }
+
 }
